@@ -10,7 +10,13 @@ export async function getPterodactylEulaState(identifier: string) {
     return /(?:^|\n)\s*eula\s*=\s*true\s*(?:\n|$)/i.test(content)
   } catch (error) {
     const clientError = error as Error & { name?: string; status?: number }
-    if (clientError.status === 404 || clientError.name === 'PterodactylClientApiError:404') return false
+    if (
+      clientError.status === 404
+      || clientError.name === 'PterodactylClientApiError:404'
+      || (clientError.status === 500 && /DaemonConnectionException|machine running this server|installation process/i.test(clientError.message))
+    ) {
+      return false
+    }
     throw error
   }
 }

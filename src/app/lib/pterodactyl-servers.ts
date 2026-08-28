@@ -117,9 +117,23 @@ export async function getPterodactylServers(ownerId: number) {
 async function getPterodactylNetworkAllocations(identifier: string) {
   if (!clientApiKey) return []
 
-  const response = await pterodactylClientRequest<{
+  let response: {
     data?: Array<{ attributes?: PterodactylAllocation } | PterodactylAllocation>
-  }>(`/servers/${encodeURIComponent(identifier)}/network/allocations`)
+  } | undefined
+  try {
+    response = await pterodactylClientRequest<{
+      data?: Array<{ attributes?: PterodactylAllocation } | PterodactylAllocation>
+    }>(`/servers/${encodeURIComponent(identifier)}/network/allocations`)
+  } catch (error) {
+    const clientError = error as Error & { status?: number; detail?: string }
+    if (
+      clientError.status === 404
+      || (clientError.status === 409 && /installation process|not yet completed/i.test(clientError.detail || clientError.message))
+    ) {
+      return []
+    }
+    throw error
+  }
 
   return (response?.data ?? [])
     .flatMap((entry) => {

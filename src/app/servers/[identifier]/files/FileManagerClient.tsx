@@ -47,6 +47,7 @@ export default function FileManagerClient({ identifier, serverName, initialFiles
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [actionKey, setActionKey] = useState<string | null>(null)
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadDirectory = async (nextDirectory: string) => {
@@ -62,6 +63,7 @@ export default function FileManagerClient({ identifier, serverName, initialFiles
       const payload = await response.json()
       setDirectory(nextDirectory)
       setFiles(payload.files ?? [])
+      setSelectedPaths(new Set())
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to load directory.')
     } finally {
@@ -208,6 +210,39 @@ export default function FileManagerClient({ identifier, serverName, initialFiles
     }
   }
 
+  const bulkAction = async (action: 'download' | 'delete') => {
+      const paths = Array.from(selectedPaths)
+      if (paths.length === 0) return
+      if (action === 'delete' && !window.confirm(`Delete ${paths.length} selected item${paths.length === 1 ? '' : 's'}? This cannot be undone.`)) return
+      setActionKey('bulk')
+      setError(null)
+      try {
+        const response = await fetch(`/api/servers/${identifier}/files/${action === 'download' ? 'archive' : 'delete'}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paths }),
+        })
+        if (action === 'download') {
+          if (!response.ok) throw new Error('Unable to download selected files.')
+          const blob = await response.blob()
+          const url = URL.createObjectURL(blob)
+          const anchor = document.createElement('a')
+          anchor.href = url
+          anchor.download = 'selected-files.zip'
+          anchor.click()
+          URL.revokeObjectURL(url)
+        } else {
+          const payload = await response.json().catch(() => null)
+          if (!response.ok) throw new Error(payload?.error || 'Unable to delete selected files.')
+          await loadDirectory(directory)
+        }
+      } catch (caughtError) {
+        setError(caughtError instanceof Error ? caughtError.message : 'Unable to complete bulk action.')
+      } finally {
+        setActionKey(null)
+    }
+  }
+
   const decompressFile = async (file: PterodactylFile) => {
     const itemKey = `${directory}:${file.name}`
     setActionKey(itemKey)
@@ -298,10 +333,24 @@ export default function FileManagerClient({ identifier, serverName, initialFiles
             if (event.target.files) void uploadFiles(event.target.files)
             event.target.value = ''
           }} />
-          <div className="grid grid-cols-[minmax(0,1fr)_120px_64px] gap-4 border-b border-gray-100 bg-gray-50 px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">
-            <span>Name</span>
-            <span>Size</span>
-            <span className="text-right">Actions</span>
+          <div className="border-b border-gray-100 bg-gray-50 px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">
+            <div className="grid grid-cols-[28px_minmax(0,1fr)_120px_64px] items-center gap-4">
+              <span />
+              <span>Name</span>
+              <span>Size</span>
+              <span className="text-right">Actions</span>
+            </div>
+            {selectedPaths.size > 0 && (
+              <div className="mt-3 grid grid-cols-[28px_minmax(0,1fr)_120px_64px] items-center gap-4">
+                <input type="checkbox" checked={files.length > 0 && selectedPaths.size === files.length} onChange={(event) => setSelectedPaths(event.target.checked ? new Set(files.map((file) => getEntryPath(directory, file.name))) : new Set())} aria-label="Select all files" />
+                <span className="normal-case tracking-normal">{selectedPaths.size} selected</span>
+                <span />
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => void bulkAction('download')} disabled={actionKey === 'bulk'} className="rounded-lg p-2 text-gray-500 hover:bg-amber-100 hover:text-amber-700" aria-label="Download selected files"><Download className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => void bulkAction('delete')} disabled={actionKey === 'bulk'} className="rounded-lg p-2 text-gray-500 hover:bg-red-100 hover:text-red-700" aria-label="Delete selected files"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -322,7 +371,8 @@ export default function FileManagerClient({ identifier, serverName, initialFiles
                 const isEditable = !isFolder && canEditFile(file.name)
 
                 return (
-                  <div key={itemKey} className="group relative grid grid-cols-[minmax(0,1fr)_120px_64px] items-center gap-4 px-6 py-3 text-sm transition hover:bg-amber-50/40">
+                  <div key={itemKey} className="group relative grid grid-cols-[28px_minmax(0,1fr)_120px_64px] items-center gap-4 px-6 py-3 text-sm transition hover:bg-amber-50/40">
+                    <input type="checkbox" checked={selectedPaths.has(getEntryPath(directory, file.name))} onChange={(event) => setSelectedPaths((current) => { const next = new Set(current); const path = getEntryPath(directory, file.name); if (event.target.checked) next.add(path); else next.delete(path); return next })} aria-label={`Select ${file.name}`} />
                     <button
                       type="button"
                       className="flex min-w-0 cursor-pointer items-center gap-3 text-left disabled:cursor-not-allowed"

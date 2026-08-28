@@ -98,6 +98,28 @@ export async function deletePterodactylFile(identifier: string, filePaths: strin
   })
 }
 
+export async function archivePterodactylFiles(identifier: string, filePaths: string[]) {
+  if (!panelUrl || !clientApiKey || filePaths.length === 0) {
+    throw new Error('Pterodactyl client API is not configured or no files were selected.')
+  }
+
+  const archive = new JSZip()
+  for (const filePath of filePaths) {
+    const normalizedPath = filePath.replace(/\/+$/, '') || '/'
+    const response = await fetch(`${panelUrl}/api/client/servers/${encodeURIComponent(identifier)}/files/download?file=${encodeURIComponent(normalizedPath)}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/octet-stream', Authorization: `Bearer ${clientApiKey}` },
+    })
+    if (!response.ok) continue
+    archive.file(normalizedPath.split('/').filter(Boolean).pop() || 'file', new Uint8Array(await (await response.blob()).arrayBuffer()))
+  }
+
+  return {
+    blob: await archive.generateAsync({ type: 'blob', compression: 'DEFLATE' }),
+    fileName: 'selected-files.zip',
+  }
+}
+
 export async function decompressPterodactylFile(identifier: string, filePath: string) {
   const directory = filePath.slice(0, filePath.lastIndexOf('/')) || '/'
   await pterodactylClientRequest(`/servers/${encodeURIComponent(identifier)}/files/decompress`, {

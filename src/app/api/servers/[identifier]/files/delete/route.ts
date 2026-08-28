@@ -12,12 +12,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ ide
 
   try {
     const { identifier } = await params
-    const { path } = await request.json()
-    if (typeof path !== 'string' || !path.startsWith('/')) return Response.json({ error: 'Invalid file path.' }, { status: 400 })
+    const body = await request.json()
+    const paths = Array.isArray(body?.paths)
+      ? body.paths.filter((path: unknown): path is string => typeof path === 'string' && path.startsWith('/'))
+      : typeof body?.path === 'string' && body.path.startsWith('/') ? [body.path] : []
+    if (paths.length === 0) return Response.json({ error: 'Invalid file path.' }, { status: 400 })
     const panelUser = await ensurePterodactylUser({ clerkId: user.id, email })
     const server = await getPterodactylServer(panelUser.id, identifier)
     if (!server?.identifier) return Response.json({ error: 'Server not found.' }, { status: 404 })
-    await deletePterodactylFile(server.identifier, [path])
+    await deletePterodactylFile(server.identifier, paths)
     return Response.json({ success: true })
   } catch (error) {
     console.error('Unable to delete Pterodactyl file:', error)
