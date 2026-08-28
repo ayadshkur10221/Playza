@@ -1,6 +1,7 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
 import { createPterodactylServer, getPterodactylServers } from '@/app/lib/pterodactyl-servers'
+import { addServerTime } from '@/app/lib/pterodactyl-time'
 
 export async function POST(request: Request) {
   const user = await currentUser()
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     }
 
     const server = await createPterodactylServer(panelUser.id, name)
+    await addServerTime(server.id, panelUser.id, server.name, server.description)
     return Response.json({ server: { id: server.id, identifier: server.identifier, name: server.name } }, { status: 201 })
   } catch (error) {
     if (error instanceof Error && error.message === 'SERVER_LIMIT_REACHED') {

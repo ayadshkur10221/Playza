@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
 import { getPterodactylServer, getPterodactylServerStatus } from '@/app/lib/pterodactyl-servers'
+import { enforceServerTime } from '@/app/lib/pterodactyl-time'
 
 export async function GET(
   _request: Request,
@@ -19,6 +20,7 @@ export async function GET(
     const server = await getPterodactylServer(panelUser.id, identifier)
     if (!server?.identifier) return Response.json({ error: 'Server not found.' }, { status: 404 })
 
+    await enforceServerTime(server.id, server.description)
     const status = await getPterodactylServerStatus(server.identifier)
     return Response.json({ status })
   } catch (error) {

@@ -41,7 +41,7 @@ const FEATURE_SECTIONS: Feature[] = [
     tag: 'Community Ready',
     title: 'Bring Your Friends & Datapacks to the World',
     description:
-      'Full support for Paper, Spigot. Install your favorite datapacks.',
+      'Full support for Paper and Spigot. Install your favorite datapacks.',
     icon: <Blocks className="w-8 h-8 text-amber-500" />,
     stats: [
       ['Mod Engine', 'Paper/Spigot'],

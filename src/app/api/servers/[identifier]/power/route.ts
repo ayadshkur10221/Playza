@@ -2,6 +2,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
 import { getPterodactylServer } from '@/app/lib/pterodactyl-servers'
 import { ensurePterodactylJavaCompatibility, sendPterodactylPowerAction } from '@/app/lib/pterodactyl-power'
+import { enforceServerTime } from '@/app/lib/pterodactyl-time'
 
 const signals = new Set(['start', 'stop', 'restart'])
 
@@ -29,6 +30,10 @@ export async function POST(
     if (!server?.identifier) return Response.json({ error: 'Server not found.' }, { status: 404 })
 
     if (signal === 'start') {
+      const expiresAt = await enforceServerTime(server.id, server.description)
+      if (!expiresAt || expiresAt <= Date.now()) {
+        return Response.json({ error: 'Add server time before starting this server.' }, { status: 403 })
+      }
       await ensurePterodactylJavaCompatibility(server.identifier, server.docker_image)
     }
     await sendPterodactylPowerAction(server.identifier, signal as 'start' | 'stop' | 'restart')

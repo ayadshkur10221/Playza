@@ -18,6 +18,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ide
     return Response.json(response?.attributes || {})
   } catch (error) {
     console.error('Unable to read Pterodactyl server resources:', error)
+    const clientError = error as Error & { status?: number; detail?: string }
+    if (clientError.status === 409 && /currently suspended|suspended/i.test(clientError.detail || clientError.message)) {
+      return Response.json({ current_state: 'suspended', resources: {} })
+    }
     return Response.json({ error: 'The server resources could not be loaded.' }, { status: 502 })
   }
 }

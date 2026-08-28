@@ -3,6 +3,7 @@ export type PterodactylAttributes = {
   uuid: string
   identifier?: string
   name?: string
+  description?: string | null
   docker_image?: string
   user?: number
   owner_id?: number
@@ -24,6 +25,12 @@ export type PterodactylAttributes = {
     allocations: number
   }
   allocations?: PterodactylAllocation[]
+  node?: {
+    fqdn?: string
+    scheme?: 'http' | 'https'
+    daemon_listen?: number
+    daemon_sftp?: number
+  }
 }
 
 export type PterodactylResponse<T> = {

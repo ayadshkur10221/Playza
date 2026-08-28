@@ -12,6 +12,7 @@ import {
   pterodactylRequest,
 } from './pterodactyl-shared'
 import type { PterodactylServerResources } from './pterodactyl-shared'
+import { enforceServerTime } from './pterodactyl-time'
 
 export type PterodactylServer = PterodactylAttributes
 const creationLocks = new Map<number, Promise<PterodactylServer>>()
@@ -87,8 +88,14 @@ export async function getPterodactylServers(ownerId: number) {
 
     const detailedServers = await Promise.all(pageServers.map(async (server) => {
       const detail = await pterodactylRequest<PterodactylResponse<PterodactylServer>>(
-        `/servers/${server.id}?include=allocations`
+        `/servers/${server.id}?include=allocations,node`
       )
+      const nodeRelationship = (detail as PterodactylResponse<PterodactylServer> & {
+        relationships?: { node?: { data?: PterodactylResponse<PterodactylNode> } }
+      }).relationships?.node?.data?.attributes
+      const detailedServer = { ...server, ...detail.attributes }
+      if (nodeRelationship) detailedServer.node = nodeRelationship as PterodactylServer['node']
+      await enforceServerTime(detailedServer.id, detailedServer.description)
       const allocations = detail.relationships?.allocations?.data.map(({ attributes }) => attributes)
       const clientAllocations = await getPterodactylNetworkAllocations(server.identifier || server.uuid)
       const resolvedAllocations = clientAllocations.length > 0
@@ -96,7 +103,7 @@ export async function getPterodactylServers(ownerId: number) {
         : allocations && allocations.length > 0 ? allocations : server.allocations
 
       return {
-        ...server,
+        ...detailedServer,
         allocations: resolvedAllocations?.sort((left, right) => {
           const leftPrimary = left.is_default || left.id === server.allocation
           const rightPrimary = right.is_default || right.id === server.allocation
@@ -128,7 +135,7 @@ async function getPterodactylNetworkAllocations(identifier: string) {
     const clientError = error as Error & { status?: number; detail?: string }
     if (
       clientError.status === 404
-      || (clientError.status === 409 && /installation process|not yet completed/i.test(clientError.detail || clientError.message))
+      || (clientError.status === 409 && /installation process|not yet completed|currently suspended|suspended/i.test(clientError.detail || clientError.message))
     ) {
       return []
     }
@@ -164,6 +171,9 @@ export async function getPterodactylServerStatus(identifier: string) {
       && /not yet completed its installation|installation process/i.test(clientError.detail || clientError.message)
     ) {
       return 'installing'
+    }
+    if (clientError.status === 409 && /currently suspended|suspended/i.test(clientError.detail || clientError.message)) {
+      return 'suspended'
     }
 
     throw error
