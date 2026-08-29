@@ -70,10 +70,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ ide
 
     const token = randomBytes(8).toString('base64url').replace(/[-_]/g, '').slice(0, 16)
     const publicBaseUrl = getPublicAppBaseUrl()
-    const targetUrl = new URL(`/servers/${server.identifier}`, publicBaseUrl)
-    targetUrl.searchParams.set('add-time', '1')
-    targetUrl.searchParams.set('token', token)
-    const shortUrl = await shortenWithCuty(targetUrl.toString())
+    const callbackUrl = new URL(`/api/servers/${server.identifier}/time/callback`, publicBaseUrl)
+    callbackUrl.searchParams.set('token', token)
+    const shortUrl = await shortenWithCuty(callbackUrl.toString())
     const link = createPendingAddTimeLink(server.identifier, shortUrl, token)
     return Response.json({ shortUrl: link.shortUrl, token: link.token, pending: true })
   } catch (error) {
