@@ -61,9 +61,6 @@ export default function MinecraftVersionCard({ identifier, disabled = false }: {
     <>
       <section className="flex h-full flex-col rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-            <span className="text-sm font-black">MC</span>
-          </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">Minecraft Version</h2>
             {currentVersion && <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">Installed: {currentVersion}</span>}
@@ -91,7 +88,7 @@ export default function MinecraftVersionCard({ identifier, disabled = false }: {
               type="button"
               onClick={saveVersion}
               disabled={saving || selectedVersion === currentVersion || disabled}
-              className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 pt-4 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Saving...' : 'Save Version'}

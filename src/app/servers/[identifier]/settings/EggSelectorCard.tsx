@@ -62,10 +62,8 @@ export default function EggSelectorCard({ identifier, disabled = false }: { iden
     <>
       <section className="flex h-full flex-col rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><Cpu className="h-5 w-5" /></div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">Server Software</h2>
-            {data?.currentSoftwareId && <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700"><Check className="h-3 w-3" /> Current</span>}
           </div>
         </div>
         <p className="mt-4 text-sm leading-6 text-gray-600">Change the server software environment. Startup scripts, Docker images, and variables will be updated.</p>
