@@ -1,73 +1,58 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-type EnvironmentMap = Record<string, string>
-
-type StartupVariable = {
-  key: string
-  value: string
-  default?: string
-  name?: string
-}
+import DockerImageCard from './DockerImageCard'
+import EggSelectorCard from './EggSelectorCard'
+import MinecraftVersionCard from './MinecraftVersionCard'
 
 type ServerSettingsClientProps = {
   identifier: string
   initialName: string
-  initialStartup: string
   initialDockerImage: string
   initialDockerImages: string[]
-  initialEnvironment: EnvironmentMap
-  initialVariables: StartupVariable[]
 }
 
 export default function ServerSettingsClient({
   identifier,
   initialName,
-  initialStartup,
   initialDockerImage,
   initialDockerImages,
-  initialEnvironment,
-  initialVariables,
 }: ServerSettingsClientProps) {
   const router = useRouter()
   const [name, setName] = useState(initialName)
-  const [startup, setStartup] = useState(initialStartup)
-  const [dockerImage, setDockerImage] = useState(initialDockerImage || initialDockerImages[0] || '')
-  const [dockerImages, setDockerImages] = useState<string[]>(
-    initialDockerImages.length > 0 ? initialDockerImages : initialDockerImage ? [initialDockerImage] : []
-  )
-  const [variables, setVariables] = useState<StartupVariable[]>(
-    initialVariables.length > 0
-      ? initialVariables
-      : Object.entries(initialEnvironment).map(([key, value]) => ({ key, value, default: value, name: key }))
-  )
-  const [saving, setSaving] = useState<'details' | 'startup' | 'reinstall' | 'delete' | null>(null)
+  const [saving, setSaving] = useState<'details' | 'reinstall' | 'delete' | null>(null)
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+  const [serverStatus, setServerStatus] = useState('offline')
+  const isSuspended = serverStatus === 'suspended'
 
   useEffect(() => {
-    if (initialDockerImage && !dockerImages.includes(initialDockerImage)) {
-      setDockerImages((current) => Array.from(new Set([...current, initialDockerImage])))
+    let active = true
+    async function refreshStatus() {
+      try {
+        const response = await fetch(`/api/servers/${identifier}/status`, { cache: 'no-store' })
+        const result = await response.json()
+        if (active && response.ok && typeof result?.status === 'string') {
+          setServerStatus(result.status)
+        }
+      } catch {
+        // Keep the last known status if the polling request fails.
+      }
     }
-  }, [initialDockerImage, dockerImages])
 
-  const environment = useMemo(() => {
-    return variables.reduce<EnvironmentMap>((accumulator, variable) => {
-      accumulator[variable.key] = variable.value
-      return accumulator
-    }, {})
-  }, [variables])
-
-  const updateVariableValue = (key: string, value: string) => {
-    setVariables((current) =>
-      current.map((variable) =>
-        variable.key === key ? { ...variable, value } : variable
-      )
-    )
-  }
+    void refreshStatus()
+    const interval = window.setInterval(refreshStatus, 4000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [identifier])
 
   const saveDetails = async () => {
+    if (isSuspended) {
+      setStatus({ type: 'info', message: 'This server is suspended, so its settings are locked.' })
+      return
+    }
     setSaving('details')
     setStatus(null)
 
@@ -91,31 +76,12 @@ export default function ServerSettingsClient({
     }
   }
 
-  const saveStartup = async () => {
-    setSaving('startup')
-    setStatus(null)
-
-    try {
-      const response = await fetch(`/api/servers/${identifier}/settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'startup', startup, dockerImage, environment }),
-      })
-
-      const result = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(result?.error || 'Unable to update server startup settings.')
-      }
-
-      setStatus({ type: 'success', message: 'Startup configuration updated successfully.' })
-    } catch (error) {
-      setStatus({ type: 'error', message: error instanceof Error ? error.message : 'Unable to update startup settings.' })
-    } finally {
-      setSaving(null)
-    }
-  }
-
   const reinstallServer = async () => {
+    if (isSuspended) {
+      setStatus({ type: 'info', message: 'This server is suspended, so reinstall actions are disabled.' })
+      return
+    }
+
     setSaving('reinstall')
     setStatus(null)
 
@@ -140,6 +106,11 @@ export default function ServerSettingsClient({
   }
 
   const deleteServer = async () => {
+    if (isSuspended) {
+      setStatus({ type: 'info', message: 'This server is suspended, so it cannot be deleted right now.' })
+      return
+    }
+
     if (!window.confirm('Delete this server permanently? This will also delete it from Pterodactyl.')) return
 
     setSaving('delete')
@@ -178,8 +149,14 @@ export default function ServerSettingsClient({
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
+      {isSuspended && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          This server is suspended, so all settings are temporarily disabled.
+        </div>
+      )}
+
+      <div className="grid items-stretch gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+        <section className="flex h-full flex-col rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
           <h2 className="mb-5 text-xl font-bold text-gray-900">Server Name</h2>
 
           <label className="block">
@@ -196,7 +173,7 @@ export default function ServerSettingsClient({
             <button
               type="button"
               onClick={() => void saveDetails()}
-              disabled={saving !== null}
+              disabled={saving !== null || isSuspended}
               className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving === 'details' ? 'Saving...' : 'Save'}
@@ -204,7 +181,18 @@ export default function ServerSettingsClient({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
+        <DockerImageCard
+          identifier={identifier}
+          initialImage={initialDockerImage}
+          initialImages={initialDockerImages}
+          disabled={isSuspended}
+        />
+
+        <EggSelectorCard identifier={identifier} disabled={isSuspended} />
+
+        <MinecraftVersionCard identifier={identifier} disabled={isSuspended} />
+
+        <section className="flex h-full flex-col rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm">
           <h2 className="mb-5 text-xl font-bold text-gray-900">Reinstall</h2>
 
           <p className="mb-5 text-sm leading-6 text-gray-600">
@@ -214,14 +202,14 @@ export default function ServerSettingsClient({
           <button
             type="button"
             onClick={() => void reinstallServer()}
-            disabled={saving !== null}
+            disabled={saving !== null || isSuspended}
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving === 'reinstall' ? 'Reinstalling...' : 'Reinstall server'}
           </button>
         </section>
 
-        <section className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm xl:col-span-2">
+        <section className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm lg:col-span-2 2xl:col-span-3">
           <h2 className="mb-3 text-xl font-bold text-red-700">Delete server</h2>
           <p className="mb-5 text-sm leading-6 text-gray-600">
             Permanently delete this server, This action cannot be undone.
@@ -229,7 +217,7 @@ export default function ServerSettingsClient({
           <button
             type="button"
             onClick={() => void deleteServer()}
-            disabled={saving !== null}
+            disabled={saving !== null || isSuspended}
             className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving === 'delete' ? 'Deleting...' : 'Delete server'}

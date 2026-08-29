@@ -22,14 +22,14 @@ function normalizeSocketUrl(value: string) {
   return url.toString()
 }
 
-export default function ServerConsole({ identifier }: { identifier: string }) {
+export default function ServerConsole({ identifier, initialStatus }: { identifier: string; initialStatus?: string | null }) {
   const [lines, setLines] = useState<string[]>([])
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const [command, setCommand] = useState('')
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [error, setError] = useState<string | null>(null)
-  const [serverStatus, setServerStatus] = useState('offline')
+  const [serverStatus, setServerStatus] = useState(initialStatus || 'offline')
   const terminalRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -58,6 +58,12 @@ export default function ServerConsole({ identifier }: { identifier: string }) {
   }, [identifier])
 
   const connect = useCallback(async (reconnecting = false) => {
+    if (serverStatus === 'offline' || serverStatus === 'suspended') {
+      setConnection('disconnected')
+      setError('The console is unavailable because this server is offline or suspended.')
+      return
+    }
+
     reconnectScheduled.current = false
     if (reconnecting) setConnection('reconnecting')
     else setConnection('connecting')
@@ -123,7 +129,8 @@ export default function ServerConsole({ identifier }: { identifier: string }) {
       reconnectAttempt.current += 1
       reconnectTimer.current = setTimeout(() => connectRef.current(true), delay)
     }
-  }, [appendOutput, fetchToken])
+  }, [appendOutput, fetchToken, serverStatus])
+
   useEffect(() => {
     connectRef.current = (reconnecting) => {
       void connect(reconnecting)
@@ -131,16 +138,46 @@ export default function ServerConsole({ identifier }: { identifier: string }) {
   }, [connect])
 
   useEffect(() => {
-    intentionalClose.current = false
-    const initialConnect = setTimeout(() => void connect(), 0)
+    let active = true
+    async function refreshStatus() {
+      try {
+        const response = await fetch(`/api/servers/${encodeURIComponent(identifier)}/status`, { cache: 'no-store' })
+        const result = await response.json()
+        if (active && response.ok && typeof result?.status === 'string') {
+          setServerStatus(result.status)
+        }
+      } catch {
+        // Keep the last known state when the status refresh fails.
+      }
+    }
+
+    void refreshStatus()
+    const interval = setInterval(refreshStatus, 4000)
     return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [identifier])
+
+  useEffect(() => {
+    if (serverStatus === 'offline' || serverStatus === 'suspended') {
       intentionalClose.current = true
       reconnectScheduled.current = true
-      clearTimeout(initialConnect)
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
       socketRef.current?.close()
+      socketRef.current = null
+      return
     }
-  }, [connect])
+
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+      return
+    }
+
+    intentionalClose.current = false
+    reconnectScheduled.current = false
+    const initialConnect = setTimeout(() => void connect(), 0)
+    return () => clearTimeout(initialConnect)
+  }, [connect, serverStatus])
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -162,7 +199,6 @@ export default function ServerConsole({ identifier }: { identifier: string }) {
       <div className="mb-5 flex items-center gap-2 border-b border-gray-800 pb-4">
         <Terminal className="h-5 w-5 text-amber-400" />
         <h2 className="font-bold text-white">Console</h2>
-        <span className="ml-auto text-xs capitalize text-gray-500">{serverStatus} · {connection}</span>
       </div>
       {error && <p className="mb-3 rounded-xl border border-red-900 bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>}
       <div ref={terminalRef} onScroll={(event) => { const element = event.currentTarget; shouldStickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24 }} className="h-80 overflow-y-auto rounded-2xl bg-black/50 p-5 font-mono text-xs leading-5 text-gray-300">

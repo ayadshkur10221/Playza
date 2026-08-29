@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
-import { getPterodactylServer, getPterodactylServerResources } from '@/app/lib/pterodactyl-servers'
+import { getPterodactylServer } from '@/app/lib/pterodactyl-servers'
+import { getMinecraftNestEggs } from '@/app/lib/pterodactyl-eggs'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ identifier: string }> }) {
   const { isAuthenticated } = await auth()
@@ -14,14 +15,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ide
     const panelUser = await ensurePterodactylUser({ clerkId: user.id, email })
     const server = await getPterodactylServer(panelUser.id, identifier)
     if (!server?.identifier) return Response.json({ error: 'Server not found.' }, { status: 404 })
-    const response = await getPterodactylServerResources(server.identifier)
-    return Response.json(response?.attributes || {})
+    const eggs = await getMinecraftNestEggs()
+    return Response.json({ currentSoftwareId: server.egg || null, software: eggs })
   } catch (error) {
-    const clientError = error as Error & { status?: number; detail?: string }
-    if (clientError.status === 409 && /currently suspended|suspended/i.test(clientError.detail || clientError.message)) {
-      return Response.json({ current_state: 'suspended', resources: {} })
-    }
-    console.error('Unable to read Pterodactyl server resources:', error)
-    return Response.json({ error: 'The server resources could not be loaded.' }, { status: 502 })
+    console.error('Unable to load Minecraft nest eggs:', error)
+    return Response.json({ error: 'The available server eggs could not be loaded.' }, { status: 502 })
   }
 }

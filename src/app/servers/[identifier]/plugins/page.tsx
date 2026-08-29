@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
 import { getPterodactylServer } from '@/app/lib/pterodactyl-servers'
 import PluginsClient from './PluginsClient'
+import { getMinecraftNestEggs, isVanillaEgg } from '@/app/lib/pterodactyl-eggs'
 
 export default async function ServerPluginsPage({ params }: { params: Promise<{ identifier: string }> }) {
   const { isAuthenticated } = await auth()
@@ -16,6 +17,8 @@ export default async function ServerPluginsPage({ params }: { params: Promise<{ 
   const panelUser = await ensurePterodactylUser({ clerkId: user.id, email })
   const server = await getPterodactylServer(panelUser.id, identifier)
   if (!server?.identifier) notFound()
+  const eggs = await getMinecraftNestEggs()
+  if (isVanillaEgg(eggs.find((egg) => egg.id === server.egg))) redirect(`/servers/${server.identifier}`)
 
   return (
     <PluginsClient

@@ -24,11 +24,8 @@ export default async function ServerSettingsPage({ params }: { params: Promise<{
     <ServerSettingsClient
       identifier={server.identifier}
       initialName={server.name || 'Minecraft Server'}
-      initialStartup={startupSettings.startup || ''}
       initialDockerImage={startupSettings.docker_image || ''}
       initialDockerImages={startupSettings.docker_images || []}
-      initialEnvironment={startupSettings.environment || {}}
-      initialVariables={startupSettings.variables || []}
     />
   )
 }

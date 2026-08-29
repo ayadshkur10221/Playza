@@ -8,10 +8,11 @@ import { UserButton } from '@clerk/nextjs'
 type SidebarProps = {
   displayName: string
   userEmail: string
-  server?: { name?: string; identifier?: string }
+  server?: { name?: string; identifier?: string; isVanilla?: boolean }
+  serverStatus?: string
 }
 
-export default function Sidebar({ displayName, userEmail, server }: SidebarProps) {
+export default function Sidebar({ displayName, userEmail, server, serverStatus }: SidebarProps) {
   const pathname = usePathname()
   const isCreatePage = pathname.startsWith('/servers/create')
   const isServerPage = pathname.startsWith('/servers/') && !isCreatePage
@@ -19,6 +20,15 @@ export default function Sidebar({ displayName, userEmail, server }: SidebarProps
   const isSettingsPage = pathname.endsWith('/settings')
   const isPluginsPage = pathname.endsWith('/plugins')
   const isConsolePage = isServerPage && !isFilesPage && !isSettingsPage && !isPluginsPage
+  const isSuspended = serverStatus === 'suspended'
+
+  const serverNavItemClass = (active: boolean) => `flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${
+    isSuspended
+      ? 'cursor-not-allowed text-gray-400'
+      : active
+        ? 'bg-amber-500/10 text-amber-700'
+        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+  }`
 
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 flex-col justify-between border-r border-gray-200/80 bg-white md:flex">
@@ -43,28 +53,61 @@ export default function Sidebar({ displayName, userEmail, server }: SidebarProps
           {isServerPage && server?.identifier && (
             <div className="ml-3 space-y-1 border-l-2 border-amber-200 pl-4">
               <Link
-                href={`/servers/${server.identifier}`}
-                className="block truncate py-2 text-sm font-bold text-gray-900 hover:text-amber-700"
+                href={isSuspended ? '#' : `/servers/${server.identifier}`}
+                onClick={(event) => {
+                  if (isSuspended) event.preventDefault()
+                }}
+                className={`block truncate py-2 text-sm font-bold ${isSuspended ? 'cursor-not-allowed text-gray-400' : 'text-gray-900 hover:text-amber-700'}`}
               >
                 {server.name || 'Minecraft Server'}
               </Link>
-              <Link href={`/servers/${server.identifier}`} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${isConsolePage ? 'bg-amber-500/10 text-amber-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
+              <Link
+                href={isSuspended ? '#' : `/servers/${server.identifier}`}
+                onClick={(event) => {
+                  if (isSuspended) event.preventDefault()
+                }}
+                className={serverNavItemClass(isConsolePage)}
+                aria-disabled={isSuspended}
+              >
                 <Terminal className="h-3.5 w-3.5" />
                 Console
               </Link>
-              <Link href={`/servers/${server.identifier}/files`} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${isFilesPage ? 'bg-amber-500/10 text-amber-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
+              <Link
+                href={isSuspended ? '#' : `/servers/${server.identifier}/files`}
+                onClick={(event) => {
+                  if (isSuspended) event.preventDefault()
+                }}
+                className={serverNavItemClass(isFilesPage)}
+                aria-disabled={isSuspended}
+              >
                 <FileText className="h-3.5 w-3.5" />
                 Files
               </Link>
-              <Link href={`/servers/${server.identifier}/plugins`} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${isPluginsPage ? 'bg-amber-500/10 text-amber-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
-                <Puzzle className="h-3.5 w-3.5" />
-                Plugins
-              </Link>
+              {!server.isVanilla && (
+                <Link
+                  href={isSuspended ? '#' : `/servers/${server.identifier}/plugins`}
+                  onClick={(event) => {
+                    if (isSuspended) event.preventDefault()
+                  }}
+                  className={serverNavItemClass(isPluginsPage)}
+                  aria-disabled={isSuspended}
+                >
+                  <Puzzle className="h-3.5 w-3.5" />
+                  Plugins
+                </Link>
+              )}
               <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 cursor-not-allowed" disabled>
                 <HardDrive className="h-3.5 w-3.5" />
                 Backups
               </button>
-              <Link href={`/servers/${server.identifier}/settings`} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${isSettingsPage ? 'bg-amber-500/10 text-amber-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
+              <Link
+                href={isSuspended ? '#' : `/servers/${server.identifier}/settings`}
+                onClick={(event) => {
+                  if (isSuspended) event.preventDefault()
+                }}
+                className={serverNavItemClass(isSettingsPage)}
+                aria-disabled={isSuspended}
+              >
                 <Settings className="h-3.5 w-3.5" />
                 Settings
               </Link>
@@ -88,13 +131,18 @@ export default function Sidebar({ displayName, userEmail, server }: SidebarProps
           </Link>
         </div>
 
-        <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+        <p className="border-t border-gray-100 pt-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+          Beta v0.3
+        </p>
+
+        <div className="flex items-center justify-between pt-1">
           <div className="flex min-w-0 flex-col truncate pr-2">
             <span className="truncate text-xs font-bold text-gray-900">{displayName}</span>
             <span className="truncate text-[11px] text-gray-500">{userEmail}</span>
           </div>
           <UserButton />
         </div>
+
       </div>
     </aside>
   )

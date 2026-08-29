@@ -5,6 +5,9 @@ export type PterodactylAttributes = {
   name?: string
   description?: string | null
   docker_image?: string
+  egg?: number
+  nest?: number
+  startup?: string
   user?: number
   owner_id?: number
   email?: string

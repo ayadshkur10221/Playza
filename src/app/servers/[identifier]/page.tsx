@@ -51,7 +51,7 @@ export default async function ServerManagePage({ params }: { params: Promise<{ i
         </div>
       </header>
 
-      <Console identifier={server.identifier} />
+      <Console identifier={server.identifier} initialStatus={status} />
       <ResourceCards identifier={server.identifier} memoryLimit={server.limits?.memory || 0} diskLimit={server.limits?.disk || 0} />
     </main>
   )

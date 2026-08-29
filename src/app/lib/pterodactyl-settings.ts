@@ -153,6 +153,35 @@ export async function updatePterodactylServerStartup(identifier: string, payload
   })
 }
 
+export async function updatePterodactylMinecraftVersion(identifier: string, version: string) {
+  const settings = await getPterodactylStartupSettings(identifier)
+  const versionVariable = settings.variables.find((variable) => (
+    /(?:minecraft|mc|server).*version|^version$/i.test(variable.key)
+    || /(?:minecraft|mc|server).*version|^version$/i.test(variable.name || '')
+  ))
+  if (!versionVariable) {
+    throw new Error('This server egg does not expose an editable Minecraft version variable.')
+  }
+  await pterodactylClientRequest(`/servers/${encodeURIComponent(identifier)}/startup/variable`, {
+    method: 'PUT',
+    body: JSON.stringify({ key: versionVariable.key, value: version }),
+  })
+  const buildVariable = settings.variables.find((variable) => /^BUILD_NUMBER$/i.test(variable.key))
+  if (buildVariable) {
+    await pterodactylClientRequest(`/servers/${encodeURIComponent(identifier)}/startup/variable`, {
+      method: 'PUT',
+      body: JSON.stringify({ key: buildVariable.key, value: 'latest' }),
+    })
+  }
+}
+
+export async function updatePterodactylDockerImage(identifier: string, dockerImage: string) {
+  await pterodactylClientRequest(`/servers/${encodeURIComponent(identifier)}/settings/docker-image`, {
+    method: 'PUT',
+    body: JSON.stringify({ docker_image: dockerImage }),
+  })
+}
+
 export async function reinstallPterodactylServer(identifier: string) {
   await pterodactylClientRequest(`/servers/${encodeURIComponent(identifier)}/settings/reinstall`, {
     method: 'POST',

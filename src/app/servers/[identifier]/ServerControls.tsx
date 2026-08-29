@@ -90,6 +90,7 @@ export default function ServerControls({ identifier, initialStatus }: ServerCont
 
   const isRunning = ['running', 'starting', 'restarting'].includes(status)
   const isStopped = ['offline', 'stopping', 'crashed'].includes(status)
+  const isSuspended = status === 'suspended'
 
   return (
     <div className="space-y-4">
@@ -97,19 +98,20 @@ export default function ServerControls({ identifier, initialStatus }: ServerCont
         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold capitalize text-gray-600">
           {status}
         </span>
-        <button onClick={() => sendAction('start')} disabled={loading !== null || isRunning} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <button onClick={() => sendAction('start')} disabled={loading !== null || isRunning || isSuspended} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">
           {loading === 'start' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           Start
         </button>
-        <button onClick={() => sendAction('stop')} disabled={loading !== null || isStopped} className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <button onClick={() => sendAction('stop')} disabled={loading !== null || isStopped || isSuspended} className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
           {loading === 'stop' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
           Stop
         </button>
-        <button onClick={() => sendAction('restart')} disabled={loading !== null || isStopped} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50">
+        <button onClick={() => sendAction('restart')} disabled={loading !== null || isStopped || isSuspended} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50">
           {loading === 'restart' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
           Restart
         </button>
       </div>
+      {isSuspended && <p className="text-sm text-amber-700">This server is suspended. Power actions are disabled until it is resumed.</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {showEula && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-6 backdrop-blur-md">
