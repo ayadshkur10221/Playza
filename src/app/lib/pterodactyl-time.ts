@@ -117,12 +117,22 @@ function sanitizeCutyUrl(value: unknown) {
   return value.replace(/\\\//g, '/').trim()
 }
 
+async function validateCutyShortUrl(url: string) {
+  try {
+    const response = await fetch(url, { method: 'GET', redirect: 'follow', cache: 'no-store' })
+    if (!response.ok) return false
+    const finalUrl = new URL(response.url)
+    return !/cuttty\.com$/i.test(finalUrl.hostname) && !/cuty\.io$/i.test(finalUrl.hostname) ? true : false
+  } catch {
+    return false
+  }
+}
+
 export async function shortenWithCuty(targetUrl: string) {
   const apiToken = process.env.CUTY_API_KEY || process.env.CUTY_IO_API_TOKEN || process.env.CUTY_IO_API_KEY || process.env.CUTY_IO_TOKEN
-  const alias = randomBytes(8).toString('hex').slice(0, 16)
 
   if (!apiToken) {
-    return `https://cuty.io/${alias}`
+    return targetUrl
   }
 
   const requestUrl = new URL('https://api.cuty.io/quick')
@@ -148,12 +158,21 @@ export async function shortenWithCuty(targetUrl: string) {
       || sanitizeCutyUrl(payload.shortUrl)
       || (payload.success && typeof payload.url === 'string' ? sanitizeCutyUrl(payload.url) : '')
 
-    if (payload.success === true && shortLink.length > 0) return shortLink
-    if (shortLink.length > 0) return shortLink
+    if (payload.success === true && shortLink.length > 0) {
+      const isUsable = await validateCutyShortUrl(shortLink)
+      if (isUsable) return shortLink
+      return targetUrl
+    }
+
+    if (shortLink.length > 0) {
+      const isUsable = await validateCutyShortUrl(shortLink)
+      if (isUsable) return shortLink
+    }
+
     if (payload.message) throw new Error(payload.message)
   } catch (error) {
     console.error('Unable to shorten URL via Cuty.io:', error)
   }
 
-  return `https://cuty.io/${alias}`
+  return targetUrl
 }
