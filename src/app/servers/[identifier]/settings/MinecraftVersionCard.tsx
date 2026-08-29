@@ -78,7 +78,7 @@ export default function MinecraftVersionCard({ identifier, disabled = false }: {
                 value={selectedVersion}
                 onChange={(event) => setSelectedVersion(event.target.value)}
                 disabled={saving || disabled}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition focus:border-amber-300 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none pb-4 transition focus:border-amber-300 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {MINECRAFT_VERSIONS.map((version) => <option key={version} value={version}>{version}</option>)}
               </select>
@@ -88,8 +88,7 @@ export default function MinecraftVersionCard({ identifier, disabled = false }: {
               type="button"
               onClick={saveVersion}
               disabled={saving || selectedVersion === currentVersion || disabled}
-              className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 pt-4 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
+              className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Saving...' : 'Save Version'}
             </button>
