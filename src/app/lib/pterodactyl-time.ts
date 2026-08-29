@@ -125,10 +125,9 @@ export async function shortenWithCuty(targetUrl: string) {
     return `https://cuty.io/${alias}`
   }
 
-  const requestUrl = new URL('https://cuty.io/api')
-  requestUrl.searchParams.set('api', apiToken)
+  const requestUrl = new URL('https://api.cuty.io/quick')
+  requestUrl.searchParams.set('token', apiToken.trim())
   requestUrl.searchParams.set('url', targetUrl)
-  requestUrl.searchParams.set('alias', alias)
 
   try {
     const response = await fetch(requestUrl, { method: 'GET', headers: { Accept: 'application/json', 'User-Agent': 'PlayzaPanel/1.0' }, cache: 'no-store' })
@@ -138,18 +137,20 @@ export async function shortenWithCuty(targetUrl: string) {
     }
 
     const payload = await response.json() as {
-      status?: string
-      shortenedUrl?: string
+      success?: boolean
+      short_url?: string
       shortUrl?: string
+      message?: string | null
       url?: string
-      message?: string
     }
 
-    const shortLink = sanitizeCutyUrl(payload.shortenedUrl)
+    const shortLink = sanitizeCutyUrl(payload.short_url)
       || sanitizeCutyUrl(payload.shortUrl)
-      || (payload.status === 'success' ? sanitizeCutyUrl(payload.url) : '')
+      || (payload.success && typeof payload.url === 'string' ? sanitizeCutyUrl(payload.url) : '')
 
+    if (payload.success === true && shortLink.length > 0) return shortLink
     if (shortLink.length > 0) return shortLink
+    if (payload.message) throw new Error(payload.message)
   } catch (error) {
     console.error('Unable to shorten URL via Cuty.io:', error)
   }
