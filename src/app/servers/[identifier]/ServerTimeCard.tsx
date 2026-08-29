@@ -3,8 +3,8 @@
 import { Clock3, Loader2, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
-export default function ServerTimeCard({ identifier }: { identifier: string }) {
-  const [expiresAt, setExpiresAt] = useState<number | null>(null)
+export default function ServerTimeCard({ identifier, initialExpiresAt = null }: { identifier: string; initialExpiresAt?: number | null }) {
+  const [expiresAt, setExpiresAt] = useState<number | null>(initialExpiresAt)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)

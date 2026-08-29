@@ -6,7 +6,7 @@ import ResourceCards from './ResourceCards'
 import ServerTimeCard from './ServerTimeCard'
 import { ensurePterodactylUser } from '@/app/lib/pterodactyl-auth'
 import { getPterodactylServer, getPterodactylServerStatus } from '@/app/lib/pterodactyl-servers'
-import { enforceServerTime } from '@/app/lib/pterodactyl-time'
+import { enforceServerTime, getServerExpiry } from '@/app/lib/pterodactyl-time'
 
 export default async function ServerManagePage({ params }: { params: Promise<{ identifier: string }> }) {
   const { isAuthenticated } = await auth()
@@ -28,6 +28,7 @@ export default async function ServerManagePage({ params }: { params: Promise<{ i
   const serverAddress = address && allocation?.port
     ? `${address}:${allocation.port}`
     : address || 'Unavailable'
+  const initialExpiresAt = getServerExpiry(server.description)
 
   return (
     <main className="flex-1 space-y-8 overflow-y-auto p-6 md:p-10">
@@ -47,7 +48,7 @@ export default async function ServerManagePage({ params }: { params: Promise<{ i
               <ServerControls identifier={server.identifier} initialStatus={status} />
             </div>
           </div>
-          <ServerTimeCard identifier={server.identifier} />
+          <ServerTimeCard identifier={server.identifier} initialExpiresAt={initialExpiresAt} />
         </div>
       </header>
 

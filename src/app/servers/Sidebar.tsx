@@ -132,7 +132,7 @@ export default function Sidebar({ displayName, userEmail, server, serverStatus }
         </div>
 
         <p className="border-t border-gray-100 pt-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-          Beta v0.3
+          Beta v0.4
         </p>
 
         <div className="flex items-center justify-between pt-1">
